@@ -1,0 +1,7 @@
+{
+  "apiKey": "your Twillio ApiKey here",
+  "phone": null,
+  "email": "1337 email here",
+  "password": "1337 password here",
+  "path": "images output path here: default is < ./output/ >"
+}

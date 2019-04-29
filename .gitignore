@@ -1,5 +1,7 @@
 # config file
 config.json
+output/
+*.png
 
 # Logs
 logs
