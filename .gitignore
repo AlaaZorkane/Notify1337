@@ -2,6 +2,7 @@
 config.json
 output/
 *.png
+make_call.js
 
 # Logs
 logs

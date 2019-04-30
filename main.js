@@ -1,9 +1,11 @@
-const sleep = async (milliseconds) => {
-  return new Promise(resolve => setTimeout(resolve, milliseconds))
+function msleep(n) {
+  Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, n);
+}
+function sleep(n) {
+  msleep(n*1000);
 }
 
 let config = require('./config.json');
-let https = require('https');
 let looksSame = require('looks-same');
 const puppeteer = require('puppeteer');
 
@@ -16,6 +18,7 @@ let phone = config.phone
 let screensPath = config.path // ./output/
 
 var isDifferent = false;
+var canSleep = false;
 
 
 // .emphasis-title --> h2
@@ -32,6 +35,8 @@ console.log("- Notify1337 -");
     height: 1000
   });
   await page.setViewport(override);
+
+  //define takeScreen function
 
   //loading page
   await page.goto('https://candidature.1337.ma/users/sign_in', {
@@ -53,34 +58,35 @@ console.log("- Notify1337 -");
 
 
   while (!isDifferent) {
+
     await page.screenshot({
       path: `${screensPath}screen1.png`,
       fullPage: true
     });
 
-    // SLEEP HERE FOR 1 MIN
-    //cron ain't for sleeps, its for calling something every x time with a delay won't work here u just gotta use that stupid sleep thing
-    
-    // hmm hmmmmm, I need a sleep, I cant see where I can use that f this type of algorithm
-    // Wanna sleep everything that comes after this right ?
-    
-    
-    await sleep(10000)
-
     await page.reload({
       waitUntil: 'load'
     });
+
+
+    if(canSleep) sleep(5);
 
     await page.screenshot({
       path: `${screensPath}screen2.png`,
       fullPage: true
     });
+
     looksSame(`${screensPath}screen1.png`, `${screensPath}screen2.png`, async (error, equal) => {
-      if (equal) {
+      // equal = they look the same
+      if (equal.equal) {
         console.log("[-] No differences - 1min for next retry...")
+        canSleep = true;
       } else {
-        console.log("[+] Difference found, launching validation function... (1min)");
-        await sleep(10000);
+        console.log("[+] Difference found, launching validation function... (3min)");
+        await page.reload({
+          waitUntil: 'load'
+        });
+        sleep(5)
         await page.screenshot({
           path: `${screensPath}screenValidation.png`,
           fullPage: true
@@ -88,6 +94,7 @@ console.log("- Notify1337 -");
         validate(`${screensPath}screen1.png`, `${screensPath}screenValidation.png`);
       }
     });
+
   }
 
   console.log('"So, when the time comes...the boy must die?"')

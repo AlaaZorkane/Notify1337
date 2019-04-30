@@ -6,12 +6,15 @@
   "author": "Alaa Zorkane <Alaazorkane@gmail.com>",
   "license": "GPL-3.0",
   "scripts": {
-    "start": "nodemon ./main.js"
+    "start": "node ./main.js",
+    "dev": "nodemon ./main.js",
+    "test": "nodemon ./test.js",
+    "testrun": "node ./test.js"
   },
   "dependencies": {
-    "cron": "^1.7.1",
     "looks-same": "^7.2.0",
     "nodemon": "^1.18.11",
-    "puppeteer": "^1.15.0"
+    "puppeteer": "^1.15.0",
+    "twilio": "^3.30.2"
   }
 }
