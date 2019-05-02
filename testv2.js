@@ -6,53 +6,51 @@ function sleep(n) {
   msleep(n * 1000);
 }
 
-function runScript(scriptPath, callback) {
-
-  // keep track of whether callback has been invoked to prevent multiple invocations
-  var invoked = false;
-
-  var process = childProcess.fork(scriptPath);
-
-  // listen for errors as they may prevent the exit event from firing
-  process.on('error', function (err) {
-    if (invoked) return;
-    invoked = true;
-    callback(err);
-  });
-
-  // execute the callback once the process has finished running
-  process.on('exit', function (code) {
-    if (invoked) return;
-    invoked = true;
-    var err = code === 0 ? null : new Error('exit code ' + code);
-    callback(err);
-  });
-
-}
-
-
-const config = require('./config.json');
-const looksSame = require('looks-same');
-const twilio = require('twilio');
-const childProcess = require('child_process');
-const puppeteer = require('puppeteer');
-
 // config
-
+const config = require('./config.json');
 const authToken = config.authToken
 const accountSid = config.accountSid
 const twilioNumber = config.twilioNumber
 const phone = config.phone
-
 const email = config.email
 const password = config.password
-
 const screensPath = config.path // ./output/
 
+// libs
+const looksSame = require('looks-same');
+const twilio = require('twilio');
+const puppeteer = require('puppeteer');
 const client = require('twilio')(accountSid, authToken);
 
+
+
+
+
+// vars
+var isDifferent = false;
+var canSleep = false;
+var firstCheck = false;
+
+// functions
+function checker(image, compare, isFinal){
+  var isEqual = true;
+  console.log("Checking...")
+  looksSame(image, compare, (error,equal) => {
+    if(error) console.log(err);
+    isEqual = equal.equal;
+  })
+  if(isEqual === false){
+    console.log("Difference found!")
+    if(isFinal === false){
+      firstCheck = true;
+    } else {
+      isDifferent = true;
+    }
+  }
+}
+
 function call() {
-  console.log("call function launched..")
+  console.log("Calling...")
   client.calls
     .create({
       url: 'http://demo.twilio.com/docs/voice.xml',
@@ -62,10 +60,11 @@ function call() {
       if (err) console.log(err);
       else console.log("Calling...")
     })
+  process.exit()
+  sleep(10);
 }
 
-var isDifferent = false;
-var canSleep = false;
+
 
 
 // .emphasis-title --> h2
@@ -113,6 +112,8 @@ console.log("- Notify1337 -");
   while (!isDifferent) {
     if (canSleep) sleep(5);
 
+    console.log("Reloading...")
+
     await page.reload({
       waitUntil: 'load'
     });
@@ -121,35 +122,31 @@ console.log("- Notify1337 -");
       fullPage: false
     });
 
-    looksSame("./output/original.png", "./output/ToCompare.png", async (error, equal) => {
-      if (equal.equal) {
-        console.log(`[-] No differences - 1min for next retry...[${equal.equal}]`)
-        if (!canSleep) canSleep = true;
+    checker("./output/original.png", "./output/ToCompare.png", false)
+    sleep(5)
+    if (firstCheck) {
+      console.log("First Check triggered!")
+      sleep(5)
+      await page.reload({
+        waitUntil: 'load'
+      });
+      await page.screenshot({
+        path: "./output/Validation.png",
+        fullPage: false
+      });
+      console.log("Initiating second check...")
+      checker("./output/original.png", "./output/Validation.png", true)
+      if (isDifferent) {
+        console.log("Calling function...")
+        call()
       } else {
-        console.log("[+] Difference found, launching validation function... (3min)");
-        sleep(5)
-
-        await page.reload({
-          waitUntil: 'load'
-        });
-        await page.screenshot({
-          path: `${screensPath}screenValidation.png`,
-          fullPage: false
-        });
-        looksSame(`${screensPath}original.png`, `${screensPath}screenValidation.png`, (error, equal) => {
-          if (equal.equal) {
-            console.log("[-] False alarm, retrying...")
-          } else {
-            isDifferent = !isDifferent;
-
-            // CALL
-            console.log("[!] Calling...")
-          }
-        })
+        firstCheck = false;
+        isDifferent = false;
       }
-    });
+    }
+
   }
-  await call()
+
   console.log('"So, when the time comes...the boy must die?"')
   await browser.close();
 
